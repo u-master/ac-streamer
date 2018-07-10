@@ -1,0 +1,215 @@
+﻿
+===================================
+USERS
+-----------------------------------
+id					(n)			*
+type				(c[1])
+personinfo_id		(n)				-> PERSONS
+orginfo_id			(n)				-> ORGANIZATIONS
+username			(c[20])
+password			(c[20])
+-----------------------------------
+CREATE TABLE t_Users (
+	id 				serial 	 		CONSTRAINT users_key_id PRIMARY KEY,
+	type 			char(1)			CONSTRAINT users_type_default_p	DEFAULT 'p',
+	personinfo_id	integer			CONSTRAINT fk_users_persons_id REFERENCES t_Persons,
+	orginfo_id		integer			CONSTRAINT fk_users_organizations_id REFERENCES t_Organizations,
+	username  		varchar(20)		CONSTRAINT users_username_required NOT NULL UNIQUE CHECK (username<>''),
+	password 		varchar(20)		CONSTRAINT users_password_required NOT NULL CHECK (password<>'')
+);
+===================================
+
+
+===================================
+ORGANIZATIONS
+-----------------------------------
+id					(n)			*
+shortname			(c[255])
+fullname			(c[255])
+inn					(c[12])
+kpp					(c[9])
+address				(c[255])
+addressmail			(c[255])
+email				(c[40])
+phone				(c[18])
+-----------------------------------
+CREATE TABLE t_Organizations (
+	id 			serial 	 		CONSTRAINT organizations_key_id PRIMARY KEY,
+	shortname	varchar(255) 	CONSTRAINT organizations_shortname_required NOT NULL CHECK (shortname<>''),
+	fullname 	varchar(255),
+	inn			char(12),
+	kpp 	 	char(9),
+	address 	varchar(255),
+	addressmail	varchar(255),
+	email		varchar(40)		CONSTRAINT organizations_email_required NOT NULL UNIQUE CHECK (email ~~ '_%@_%._%'),
+	phone		varchar(18)
+);
+===================================
+
+
+===================================
+PERSONS
+-----------------------------------
+id 					(n)			*
+name				(c[60])
+middlename			(c[60])
+lastname			(c[60])
+sex					(c[1])
+birthdate			(d)
+inn					(c[12])
+address 			(c[255])
+email				(c[40])
+phone				(c[18])
+-----------------------------------
+CREATE TABLE t_Persons (
+	id 			serial 	 		CONSTRAINT persons_key_id PRIMARY KEY,
+	name 		varchar(60) 	CONSTRAINT persons_name_required NOT NULL CHECK (name<>''),
+	middlename 	varchar(60),
+	lastname 	varchar(60),
+	sex 		char(1)			CONSTRAINT persons_sex_valid CHECK(lower(sex) IN ('m', 'f')),
+	birthdate 	date,
+	inn			char(12),
+	address 	varchar(255),
+	email		varchar(40)		CONSTRAINT persons_email_required NOT NULL UNIQUE CHECK (email ~~ '_%@_%._%'),
+	phone		varchar(18)
+);
+INSERT INTO t_Persons (name, sex, birthdate, inn, email) VALUES ('anonimous', 'f', CURRENT_DATE, '550511111111', 'adm2@astit.ru');
+===================================
+
+
+===================================
+CHANNELS
+-----------------------------------
+id 				 	(n)			*
+user_id 			(n)				-> USERS
+tariff_id			(n)				-> TARIFFS
+name				(c[20])
+description			(c[255])
+connect_stream1		(c[255])
+connect_stream2		(c[255])
+connect_type1		(n)
+connect_type2		(n)
+connect_login		(c[60])
+connect_password	(c[60])
+archive_server_id	(n)				-> GENERAL
+archive_rel_dir		(c[255])
+isRecordOn			(b)
+-----------------------------------
+CREATE TABLE t_Channels (
+	id 				serial 	 		CONSTRAINT channels_key_id PRIMARY KEY,
+	user_id 		integer			CONSTRAINT fk_channels_users_id REFERENCES t_Users,
+	tariff_id		integer			CONSTRAINT fk_channels_tariffs_id REFERENCES t_Tariffs,
+	name			varchar(20),
+	description		varchar(255),
+	connect_stream1	varchar(255),
+	connect_stream2	varchar(255),
+	connect_type1	integer,
+	connect_type2	integer,
+	connect_login	varchar(60),
+	connect_password varchar(60),
+	archive_server_id integer		CONSTRAINT fk_channels_general_server_id REFERENCES t_General,
+	archive_rel_dir	varchar(255),
+	isRecordOn		boolean			CONSTRAINT channels_isrecordon_default_false DEFAULT FALSE
+);
+===================================
+
+
+===================================
+TARIFFS
+-----------------------------------
+id 					(n)			*
+start_date			(d)
+lastchange_date		(d)
+name 				(c[60])
+depth_days			(n)
+uninterrupt			(b)
+price				(money)
+-----------------------------------
+CREATE TABLE t_Tariffs (
+	id 				serial 	 		CONSTRAINT tariffs_key_id PRIMARY KEY,
+	start_date		date 			CONSTRAINT tariffs_start_date_default_current DEFAULT CURRENT_DATE,
+	lastchange_date	date			CONSTRAINT tariffs_lastchange_valid CHECK (lastchange_date >= start_date) DEFAULT CURRENT_DATE,
+	isable			boolean			CONSTRAINT tariffs_isable_default_false DEFAULT FALSE,
+	name  			varchar(60)		CONSTRAINT tariffs_name_required NOT NULL UNIQUE CHECK (name<>''),
+	depth_days		integer			CONSTRAINT tariffs_depth_days_default_0 DEFAULT 0,
+	isuninterrupt 	boolean			CONSTRAINT tariffs_isuninterrupt_default_false DEFAULT FALSE,
+	price			money
+);
+===================================
+
+
+===================================
+GENERAL
+-----------------------------------
+server_id 			(n)			*
+name				(c[20])
+description			(c[255])
+root_dir			(c[60])
+archive_dir			(c[255])
+archile_login		(c[25])
+archive_password 	(c[20])
+-----------------------------------
+CREATE TABLE t_General (
+	server_id		serial 	 		CONSTRAINT general_key_server_id PRIMARY KEY,
+	name  			varchar(20)		CONSTRAINT general_name_required NOT NULL UNIQUE CHECK (name<>''),
+	description		varchar(255),
+	root_dir		varchar(60)		CONSTRAINT general_root_dir_required NOT NULL UNIQUE CHECK (root_dir<>''),
+	archive_dir		varchar(255),
+	archile_login	varchar(25),
+	archive_password varchar(20)
+);
+===================================
+
+
+===================================
+RECORDS
+-----------------------------------
+id 					(n64)			*
+channel_id 			(n)				-> CHANNELS
+starttime			(dt)
+endtime				(dt)
+filename			(c[30])
+prev_id 			(n64)
+next_id 			(n64)
+-----------------------------------
+CREATE TABLE t_Records (
+	id 				bigserial		CONSTRAINT records_key_id PRIMARY KEY,
+	channel_id 		integer			CONSTRAINT fk_records_channels_key REFERENCES t_Channels,
+	starttime		timestamp(2),
+	endtime			timestamp(2),
+	filename		varchar(30),
+	prev_id 		bigint			CONSTRAINT fk_records_prev_id REFERENCES t_Records,
+	next_id 		bigint			CONSTRAINT fk_records_next_id REFERENCES t_Records
+);
+===================================
+
+
+===================================
+SESSIONS
+-----------------------------------
+id 					(n64)			*
+stream				(c[30])
+isactual			(b)
+opentime			(dt)
+duration			(n)
+//user_ip 			(c[15])
+//user_ua 			(c[60])
+-----------------------------------
+CREATE TABLE t_Sessions (
+	id 				bigserial		CONSTRAINT sessions_key_id	PRIMARY KEY,
+	stream 			varchar(30),
+	isactual		boolean			CONSTRAINT sessions_isactual_default_false DEFAULT FALSE,
+	opentime		timestamp(2),
+	duration		integer
+);
+===================================
+
+
+=============================================== TEST USER ======================================================
+
+INSERT INTO t_Users (username, password) VALUES ('AC-c1', 'testuser');
+INSERT INTO t_Tariffs (isable, name, depth_days, isuninterrupt, price) VALUES (TRUE, 'testtariff', 1, TRUE, '0.01');
+INSERT INTO t_General (name, description, root_dir, archive_dir) VALUES ('VS05501001', 'HAWK', '/astcloud','/astcloud/recorddir');
+INSERT INTO t_Channels (user_id, tariff_id, name, description, connect_stream1, connect_type1, archive_server_id, archive_rel_dir) VALUES (1, 1, 'ch1', 'AC-c1 ch1', 'rtsp://10.44.0.2:554/user=admin_password=5Va9kjwM_channel=1_stream=0', 1, 1, '/AC-c1/ch1');
+
+================================================================================================================
